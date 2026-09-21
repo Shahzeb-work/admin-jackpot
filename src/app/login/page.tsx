@@ -15,6 +15,7 @@ export default async function LoginPage() {
         <p className="mt-1 text-center text-sm text-ink-soft">Sign in to manage the platform</p>
 
         <LoginForm />
+        
 
         <div className="mt-6 rounded-lg border border-line-soft bg-cream-surface-2 px-3 py-2 text-xs text-ink-soft">
           Test credentials: <span className="text-ink">admin@jackpot.test</span> /{" "}
