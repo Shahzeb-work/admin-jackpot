@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Admin accounts for this app only. Kept separate from the player-facing
+// `User` table (owned by Jackpot-Next) so admin auth never touches player data.
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Mirrors Jackpot-Next's User model (subset of fields this app reads).
+// Owned by Jackpot-Next; only read here for tournament participant/leaderboard display.
+model User {
+  id       String  @id @default(cuid())
+  email    String  @unique
+  username String? @unique
+
+  tournamentLeaderboard  TournamentLeaderboard[]
+  tournamentParticipants TournamentParticipant[]
+}
+
+model Tournament {
+  id                 String    @id @default(cuid())
+  name               String
+  bannerUrl          String
+  startTime          DateTime
+  endTime            DateTime
+  tournamentType     String // multiplier | winning | wagered | referral | freespin
+  coinMode           String // gc | sc | gc_sc
+  prizePoolGc        Float     @default(0)
+  prizePoolSc        Float     @default(0)
+  prizePoolRates     Json? // [{rank, gcValue, scValue}]
+  description        String?
+  status             String    @default("commingup") // active | commingup | ended | canceled
+  winners            Int       @default(20)
+  isDeleted          Boolean   @default(false)
+  isPrizeDistributed Boolean   @default(false)
+  prizeDistributedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  leaderboard  TournamentLeaderboard[]
+  participants TournamentParticipant[]
+  games        TournamentGame[]
+
+  @@index([status, isDeleted, startTime])
+  @@index([status, isDeleted])
+}
+
+model TournamentGame {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  gameId       String
+  gameName     String
+  thumbnail    String?
+
+  @@index([tournamentId])
+}
+
+model TournamentParticipant {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  joinedAt     DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
+}
+
+model TournamentLeaderboard {
+  id               String     @id @default(cuid())
+  tournamentId     String
+  tournament       Tournament @relation(fields: [tournamentId], references: [id])
+  userId           String
+  user             User       @relation(fields: [userId], references: [id])
+  place            Int        @default(0)
+  prevPlace        Int        @default(0)
+  points           Float      @default(0)
+  gcPrize          Float      @default(0)
+  scPrize          Float      @default(0)
+  gcBet            Float      @default(0)
+  scBet            Float      @default(0)
+  availableToClaim Boolean    @default(false)
+  isClaimed        Boolean    @default(false)
+  claimedAt        DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId, place])
+  @@index([userId, availableToClaim, isClaimed])
+}
